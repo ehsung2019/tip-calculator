@@ -17,6 +17,11 @@
 
 package com.example.tiptime
 
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdSize
+import com.google.android.gms.ads.AdView
+import com.google.android.gms.ads.MobileAds
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -52,23 +57,66 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.viewinterop.AndroidView
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        // Initialize the Mobile Ads SDK
+        MobileAds.initialize(this) { initializationStatus -> }
+
         setContent {
             TipTimeTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    TipTimeLayout()
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                    ) {
+                        TipTimeLayout(adUnitId = "ca-app-pub-8163475936982739/1267348899")
+
+                        // Display traditional AdView
+                        AndroidView(
+                            factory = { context ->
+                                AdView(context).apply {
+                                    // Use setAdSize method here
+                                    setAdSize(AdSize.BANNER)
+                                    adUnitId = "ca-app-pub-8163475936982739/1267348899" // Set the ad unit ID here
+                                    loadAd(AdRequest.Builder().build())
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
     }
 }
+
+
+@Composable
+fun BannerAdView(adUnitId: String) {
+    val context = LocalContext.current
+
+    // Use AndroidView to integrate the AdView
+    AndroidView(
+        factory = { context ->
+            AdView(context).apply {
+                // Use setAdSize method here
+                setAdSize(AdSize.BANNER)
+                this.adUnitId = adUnitId // This is mutable, and you are setting it correctly
+                loadAd(AdRequest.Builder().build())
+            }
+        },
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+
 
 @Composable
 fun EditNumberField(value:String,
@@ -120,11 +168,11 @@ fun EditTipPercentageField(value: String,
 
 
 @Composable
-fun TipTimeLayout() {
-    var amountInput by remember {mutableStateOf("")}
-    var percentageInput by remember {mutableStateOf("15%")}
+fun TipTimeLayout(adUnitId: String) {
+    var amountInput by remember { mutableStateOf("") }
+    var percentageInput by remember { mutableStateOf("15%") }
 
-    var amount = amountInput.toDoubleOrNull() ?:0.0
+    var amount = amountInput.toDoubleOrNull() ?: 0.0
     val percentageWithoutPercent = percentageInput.removeSuffix("%").toDoubleOrNull() ?: 15.0
 
     val tip = calculateTip(amount, percentageWithoutPercent)
@@ -145,22 +193,29 @@ fun TipTimeLayout() {
                 .align(alignment = Alignment.Start)
         )
         EditNumberField(
-            value=amountInput,
-            onValueChange={amountInput=it},
-            modifier=Modifier.padding(bottom=16.dp).fillMaxWidth())
+            value = amountInput,
+            onValueChange = { amountInput = it },
+            modifier = Modifier.padding(bottom = 16.dp).fillMaxWidth()
+        )
 
         EditTipPercentageField(
             value = if (percentageInput.endsWith("%")) percentageInput else "${percentageInput}%",
-            onValueChange={percentageInput=it},
-            modifier=Modifier.padding(bottom=32.dp).fillMaxWidth())
+            onValueChange = { percentageInput = it },
+            modifier = Modifier.padding(bottom = 32.dp).fillMaxWidth()
+        )
 
         Text(
             text = stringResource(R.string.tip_amount, tip),
             style = MaterialTheme.typography.displaySmall
         )
+
+        // Add the Banner Ad here
+        BannerAdView(adUnitId = adUnitId)
+
         Spacer(modifier = Modifier.height(150.dp))
     }
 }
+
 
 /**
  * Calculates the tip based on the user input and format the tip amount
@@ -176,6 +231,6 @@ private fun calculateTip(amount: Double, tipPercent: Double = 15.0): String {
 @Composable
 fun TipTimeLayoutPreview() {
     TipTimeTheme {
-        TipTimeLayout()
+        TipTimeLayout(adUnitId = "ca-app-pub-8163475936982739/1267348899")
     }
 }
